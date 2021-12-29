@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "imu.h"
-#include "quaternion_filters.h"
 
 namespace IMU
 {

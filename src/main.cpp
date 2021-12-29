@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "imu/imu.h"
+#include "imu.h"
 
 void setup()
 {
