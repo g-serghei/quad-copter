@@ -19,9 +19,9 @@ typedef struct
     AxisType accel, gyro;
 } ImuType;
 
-namespace IMU
+namespace Imu
 {
-    void init(bool debugModeEnabled);
+    void init();
     void calibrate();
     void updateData();
     void processData();

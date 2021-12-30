@@ -1,21 +1,23 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
-
 #include "imu.h"
+#include "log.h"
 
-namespace IMU
+namespace Imu
 {
     static float GYRO_PART = 0.94;
     static float ACC_PART = 1.0 - GYRO_PART;
 
     bfs::Mpu9250 sensor(&Wire, 0x68);
 
-    bool isDebug = false;
     bool dataAvailable = false;
     float lastReadMicros;
-    AxisType angles;
-    AxisType gyroAngles;
+
+    MeridialFilterType accelFilterData;
+
+    AxisType gyroAngles = {0.0, 0.0, 0.0};
+    AxisType radAngles = {0.0, 0.0, 0.0};
+    AxisType degAngles = {0.0, 0.0, 0.0};
 
     ImuType rawData = {
         {0.0, 0.0, 0.0},
@@ -29,12 +31,8 @@ namespace IMU
         {0.0, 0.0, 0.0},
         {0.0, 0.0, 0.0}};
 
-    MeridialFilterType accelFilterData;
-
-    void init(bool debugModeEnabled)
+    void init()
     {
-        isDebug = debugModeEnabled;
-
         Wire.begin();
         Wire.setClock(400000);
 
@@ -42,48 +40,32 @@ namespace IMU
 
         if (!sensor.Begin())
         {
-            Serial.println("Error connecting to Mpu9250");
-            while (1)
-            {
-            }
+            Log::error("Error connecting to Mpu9250");
         }
 
         if (!sensor.ConfigAccelRange(bfs::Mpu9250::ACCEL_RANGE_16G))
         {
-            Serial.println("Error ConfigAccelRange");
-            while (1)
-            {
-            }
+            Log::error("Error ConfigAccelRange");
         }
 
         if (!sensor.ConfigGyroRange(bfs::Mpu9250::GYRO_RANGE_2000DPS))
         {
-            Serial.println("Error ConfibfsgGyroRange");
-            while (1)
-            {
-            }
+            Log::error("Error ConfibfsgGyroRange");
         }
 
         // if (!sensor.ConfigSrd(19))
         // {
-        //     Serial.println("Error configured SRD");
-        //     while (1)
-        //     {
-        //     }
+        //     Log::error("Error configured SRD");
         // }
 
         // if (!sensor.EnableDrdyInt())
         // {
-        //     Serial.println("Error EnableDrdyInt");
-        //     while (1)
-        //     {
-        //     }
+        //     Log::error("Error EnableDrdyInt");
         // }
 
         // pinMode(19, INPUT);
         // attachInterrupt(19, recordRawData, RISING);
 
-        angles = {0.0, 0.0, 0.0};
         lastReadMicros = micros();
 
         byte mSize = 255;
@@ -184,7 +166,6 @@ namespace IMU
     {
         if (!dataAvailable)
         {
-            //Serial.println('No data');
             return;
         }
 
@@ -195,32 +176,17 @@ namespace IMU
         accelAngles.x = atan2(-1 * data.accel.y, data.accel.z);
         accelAngles.y = atan2(-1 * data.accel.x, sqrt(data.accel.y * data.accel.y + data.accel.z * data.accel.z));
 
-        
-
         float dt = (float)(micros() - lastReadMicros) / 1000000;
 
-        angles.x = GYRO_PART * (angles.x + (data.gyro.x * dt)) + (ACC_PART * accelAngles.x);
-        angles.y = GYRO_PART * (angles.y + (data.gyro.y * dt)) + (ACC_PART * accelAngles.y);
+        radAngles.x = GYRO_PART * (radAngles.x + (data.gyro.x * dt)) + (ACC_PART * accelAngles.x);
+        radAngles.y = GYRO_PART * (radAngles.y + (data.gyro.y * dt)) + (ACC_PART * accelAngles.y);
 
         gyroAngles.x = gyroAngles.x + (data.gyro.x * dt);
         gyroAngles.y = gyroAngles.y + (data.gyro.y * dt);
 
-        AxisType degAngles = {angles.x * RAD_TO_DEG, angles.y * RAD_TO_DEG, 0.0};
+        degAngles = {(float)(radAngles.x * RAD_TO_DEG), (float)(radAngles.y * RAD_TO_DEG), 0.0};
 
-        // Serial.println(accelAngles.x * RAD_TO_DEG);
-
-        // Serial.print(accelAngles.x * RAD_TO_DEG);
-        // Serial.print(",");
-        // Serial.print(angles.x * RAD_TO_DEG);
-        // Serial.print(",");
-        // Serial.println(gyroAngles.x * RAD_TO_DEG);
-        // Serial.print(",");
-        // Serial.print(accelAngles.y * RAD_TO_DEG);
-        // Serial.print(",");
-        // Serial.println(angles.y * RAD_TO_DEG);
-        printAxis(degAngles);
-
-       
+        // printAxis(degAngles);
 
         lastReadMicros = micros();
     }

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "rc.h"
 #include "imu.h"
 
 void setup()
@@ -8,11 +9,12 @@ void setup()
     {
     }
 
-    IMU::init(true);
+    // Imu::init();
+    Rc::init();
 }
 
 void loop()
 {
-    IMU::updateData();
-    IMU::processData();
+    // Imu::updateData();
+    // Imu::processData();
 }
