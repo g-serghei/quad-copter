@@ -162,8 +162,10 @@ namespace Imu
         dataAvailable = true;
     }
 
-    void processData()
+    void process()
     {
+        Imu::updateData();
+
         if (!dataAvailable)
         {
             return;
@@ -186,9 +188,12 @@ namespace Imu
 
         degAngles = {(float)(radAngles.x * RAD_TO_DEG), (float)(radAngles.y * RAD_TO_DEG), 0.0};
 
-        // printAxis(degAngles);
-
         lastReadMicros = micros();
+    }
+
+    AxisType getDegAngles()
+    {
+        return degAngles;
     }
 
     void printAxis(AxisType axis)

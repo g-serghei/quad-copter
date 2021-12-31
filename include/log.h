@@ -8,6 +8,7 @@ namespace Log
     void error(String message);
     void info(String message);
     void info(Printable& message);
+    void warning(String message);
 }
 
 #endif

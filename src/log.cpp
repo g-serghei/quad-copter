@@ -19,4 +19,9 @@ namespace Log
     {
         Serial.println(message);
     }
+
+    void warning(String message)
+    {
+        Serial.println(message);
+    }
 }

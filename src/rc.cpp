@@ -2,16 +2,21 @@
 
 #include "rc.h"
 #include "log.h"
+#include "imu.h"
 
 namespace Rc
 {
     const char *SSID = "CopterAP";
     const char *PASSWORD = "123";
 
-    const int ESC_PIN1 = 12;
-    const int ESC_PIN2 = 13;
-    const int ESC_PIN3 = 14;
-    const int ESC_PIN4 = 27;
+    const int ESC_PIN1 = 26;
+    const int ESC_PIN2 = 25;
+    const int ESC_PIN3 = 32;
+    const int ESC_PIN4 = 33;
+
+    const int MIN_ANGLE = 3; // deg
+    const int MAX_ANGLE = 25; // deg
+    const int MAX_MOTOR_VALUE = 70;
 
     Servo ESC1;
     Servo ESC2;
@@ -57,10 +62,59 @@ namespace Rc
     {
         ws.cleanupClients();
 
-        motorFrontRight = throttle - roll - pitch - yaw;
-        motorRearRight = throttle - roll + pitch + yaw;
-        motorRearLeft = throttle + roll + pitch - yaw;
-        motorFrontLeft = throttle + roll - pitch + yaw;
+        AxisType angles = Imu::getDegAngles();
+
+        angles.x = min((int)angles.x, MAX_ANGLE);
+        angles.y = min((int)angles.y, MAX_ANGLE);
+
+        // Imu::printAxis(angles);
+
+        int stabilisationRoll = 0;
+        int stabilisationPitch = 0;
+
+        if (abs(angles.x) >= MIN_ANGLE && throttle > 10)
+        {
+            int directionX = angles.x < 0 ? 1 : -1;
+
+            stabilisationRoll = directionX * map(abs((int)angles.x), MIN_ANGLE, MAX_ANGLE, 0, MAX_MOTOR_VALUE - throttle);
+        }
+
+
+        if (abs(angles.y) >= MIN_ANGLE && throttle > 10) {
+            int directionY = angles.y < 0 ? 1 : -1;
+
+            stabilisationPitch = directionY * map(abs((int)angles.y), MIN_ANGLE, MAX_ANGLE, 0, MAX_MOTOR_VALUE - throttle);
+        }
+
+        
+        Serial.print(stabilisationPitch);
+        Serial.print(",");
+        Serial.println(stabilisationRoll);
+
+        // float offsetAngle = 3;
+
+        // if (angles.x >= offsetAngle)
+        // {
+        //     stabilisationRoll = -2;
+        // } 
+        // else if (angles.x <= -1 * offsetAngle)
+        // {
+        //     stabilisationRoll = 2;
+        // }
+
+        // if (angles.y >= offsetAngle)
+        // {
+        //     stabilisationPitch = -2;
+        // } 
+        // else if (angles.y <= -1 * offsetAngle)
+        // {
+        //     stabilisationPitch = 2;
+        // }
+
+        motorFrontRight = throttle - roll - pitch - yaw - stabilisationRoll - stabilisationPitch;
+        motorRearRight = throttle - roll + pitch + yaw - stabilisationRoll + stabilisationPitch;
+        motorRearLeft = throttle + roll + pitch - yaw + stabilisationRoll + stabilisationPitch;
+        motorFrontLeft = throttle + roll - pitch + yaw + stabilisationRoll - stabilisationPitch;
 
         ESC1.write(motorFrontRight);
         ESC2.write(motorRearRight);
@@ -84,12 +138,11 @@ namespace Rc
 
             if (error)
             {
-                Serial.print(F("deserializeJson() failed: "));
-                Serial.println(error.f_str());
+                Log::warning("deserializeJson() failed");
                 return;
             }
 
-            throttle = doc["throttle"];
+            throttle = map(doc["throttle"], 0, 180, 0, MAX_MOTOR_VALUE);
             pitch = doc["pitch"];
             roll = doc["roll"];
             yaw = doc["yaw"];
@@ -127,5 +180,4 @@ namespace Rc
         roll = 0;
         yaw = 0;
     }
-
 }

@@ -24,10 +24,11 @@ namespace Imu
     void init();
     void calibrate();
     void updateData();
-    void processData();
+    void process();
     void serialPrintf(const char *format, ...);
     void serialPrintlnf(const char *format, ...);
     void printAxis(AxisType axis);
+    AxisType getDegAngles();
 }
 
-#endif // SRC_IMU_H_
+#endif
