@@ -5,7 +5,7 @@
 
 namespace Imu
 {
-    static float GYRO_PART = 0.94;
+    static float GYRO_PART = 0.998;
     static float ACC_PART = 1.0 - GYRO_PART;
 
     bfs::Mpu9250 sensor(&Wire, 0x68);
@@ -68,7 +68,7 @@ namespace Imu
 
         lastReadMicros = micros();
 
-        byte mSize = 255;
+        byte mSize = 11;
 
         accelFilterData.x = median_filter_new(mSize, 0.0);
         accelFilterData.y = median_filter_new(mSize, 0.0);
@@ -177,7 +177,14 @@ namespace Imu
 
         degAngles = {(float)(radAngles.x * RAD_TO_DEG), (float)(radAngles.y * RAD_TO_DEG), (float)(gyroAngles.z * RAD_TO_DEG)};
 
-        printAxis(degAngles);
+        // Serial.print("GyroX:");
+        // Serial.print(gyroAngles.x * RAD_TO_DEG);
+        // Serial.print(",");
+        // Serial.print("AccelX:");
+        // Serial.print(accelAngles.x * RAD_TO_DEG);
+        // Serial.print(",");
+        // Serial.print("CompX:");
+        // Serial.println(radAngles.x * RAD_TO_DEG);
 
         lastReadMicros = micros();
     }

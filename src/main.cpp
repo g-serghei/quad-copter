@@ -9,12 +9,12 @@ void setup()
     {
     }
 
-    //Rc::init();
+    Rc::init();
     Imu::init();
 }
 
 void loop()
 {
+    Rc::process();
     Imu::process();
-    //Rc::process();
 }

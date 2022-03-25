@@ -16,18 +16,23 @@ namespace Rc
     const int ESC_PIN3 = 32;
     const int ESC_PIN4 = 33;
 
-    const int MIN_ANGLE = 3; // deg
-    const int MAX_ANGLE = 25; // deg
-    const int MAX_MOTOR_VALUE = 70;
+    const float MIN_ANGLE = 1;  // deg
+    const float MAX_ANGLE = 25.0; // deg
+    const int MAX_MOTOR_VALUE = 150;
 
     Servo ESC1;
     Servo ESC2;
     Servo ESC3;
     Servo ESC4;
 
-    GyverPID regulatorPitch;
-    GyverPID regulatorRoll;
-    GyverPID regulatorYaw;
+    const float KP = 2.5;
+    const float KI = 0;
+    const float KD = 2;
+
+    GyverPID regulatorPitch(KP, KI, KD);
+    GyverPID regulatorRoll(KP, KI, KD);
+    GyverPID regulatorYaw(KP, KI, KD);
+    int16_t lastRegulatorUpdate = millis();
 
     AsyncWebServer server(80);
     AsyncWebSocket ws("/ws");
@@ -62,6 +67,9 @@ namespace Rc
         ESC4.attach(ESC_PIN4, 1000, 2000);
 
         pinMode(LED_BUILTIN, OUTPUT);
+
+        regulatorPitch.setLimits(-1 * MAX_MOTOR_VALUE, MAX_MOTOR_VALUE);
+        regulatorRoll.setLimits(-1 * MAX_MOTOR_VALUE, MAX_MOTOR_VALUE);
     }
 
     void process()
@@ -70,17 +78,77 @@ namespace Rc
 
         AxisType angles = Imu::getDegAngles();
 
-        angles.x = min((int)angles.x, MAX_ANGLE);
-        angles.y = min((int)angles.y, MAX_ANGLE);
+        angles.x = min(angles.x, MAX_ANGLE);
+        angles.y = min(angles.y, MAX_ANGLE);
 
-        
+        regulatorPitch.setpoint = pitch;
+        regulatorRoll.setpoint = roll;
 
-        
+        if (throttle > 0)
+        {
+            regulatorPitch.input = abs(angles.y) > MIN_ANGLE ? angles.y : 0;
+            regulatorRoll.input = abs(angles.x) > MIN_ANGLE ? angles.x : 0;
+        }
+        else
+        {
+            regulatorPitch.input = 0;
+            regulatorRoll.input = 0;
+        }
 
-        motorFrontRight = throttle - roll - pitch - yaw;
-        motorRearRight = throttle - roll + pitch + yaw;
-        motorRearLeft = throttle + roll + pitch - yaw;
-        motorFrontLeft = throttle + roll - pitch + yaw;
+        int16_t dt = millis() - lastRegulatorUpdate;
+        regulatorPitch.setDt(dt);
+        regulatorPitch.getResult();
+
+        regulatorRoll.setDt(dt);
+        regulatorRoll.getResult();
+
+        lastRegulatorUpdate = millis();
+
+        float M_RATE = 0.8;
+
+        motorFrontRight = abs(throttle - (regulatorRoll.output * M_RATE) - (regulatorPitch.output * M_RATE) - yaw);
+        motorRearRight = abs(throttle - (regulatorRoll.output * M_RATE) + (regulatorPitch.output * M_RATE) + yaw);
+        motorRearLeft = abs(throttle + (regulatorRoll.output * M_RATE) + (regulatorPitch.output * M_RATE) - yaw);
+        motorFrontLeft = abs(throttle + (regulatorRoll.output * M_RATE) - (regulatorPitch.output * M_RATE) + yaw);
+
+        Serial.print("Setpoint:");
+        Serial.print(regulatorRoll.setpoint);
+        Serial.print(",");
+
+        Serial.print("InputX:");
+        Serial.print(regulatorRoll.input);
+        Serial.print(",");
+
+        Serial.print("Input Y:");
+        Serial.print(regulatorPitch.input);
+        Serial.print(",");
+
+        // Serial.print("motorFrontRight:");
+        // Serial.print(motorFrontRight);
+        // Serial.print(",");
+
+        // Serial.print("motorRearRight:");
+        // Serial.print(motorRearRight);
+        // Serial.print(",");
+
+        // Serial.print("motorRearLeft:");
+        // Serial.print(motorRearLeft);
+        // Serial.print(",");
+
+        // Serial.print("motorFrontLeft:");
+        // Serial.println(motorFrontLeft);
+
+        Serial.print("OutputX:");
+        Serial.print(regulatorRoll.output);
+        Serial.print(",");
+
+        Serial.print("Output Y:");
+        Serial.println(regulatorPitch.output);
+
+        // motorFrontRight = throttle - roll - pitch - yaw;
+        // motorRearRight = throttle - roll + pitch + yaw;
+        // motorRearLeft = throttle + roll + pitch - yaw;
+        // motorFrontLeft = throttle + roll - pitch + yaw;
 
         motorFrontRight = min(MAX_MOTOR_VALUE, motorFrontRight);
         motorRearRight = min(MAX_MOTOR_VALUE, motorRearRight);
