@@ -1,5 +1,7 @@
 #include <Arduino.h>
 
+#include "GyverPID.h"
+
 #include "rc.h"
 #include "log.h"
 #include "imu.h"
@@ -22,6 +24,10 @@ namespace Rc
     Servo ESC2;
     Servo ESC3;
     Servo ESC4;
+
+    GyverPID regulatorPitch;
+    GyverPID regulatorRoll;
+    GyverPID regulatorYaw;
 
     AsyncWebServer server(80);
     AsyncWebSocket ws("/ws");
@@ -67,54 +73,19 @@ namespace Rc
         angles.x = min((int)angles.x, MAX_ANGLE);
         angles.y = min((int)angles.y, MAX_ANGLE);
 
-        // Imu::printAxis(angles);
-
-        int stabilisationRoll = 0;
-        int stabilisationPitch = 0;
-
-        if (abs(angles.x) >= MIN_ANGLE && throttle > 10)
-        {
-            int directionX = angles.x < 0 ? 1 : -1;
-
-            stabilisationRoll = directionX * map(abs((int)angles.x), MIN_ANGLE, MAX_ANGLE, 0, MAX_MOTOR_VALUE - throttle);
-        }
-
-
-        if (abs(angles.y) >= MIN_ANGLE && throttle > 10) {
-            int directionY = angles.y < 0 ? 1 : -1;
-
-            stabilisationPitch = directionY * map(abs((int)angles.y), MIN_ANGLE, MAX_ANGLE, 0, MAX_MOTOR_VALUE - throttle);
-        }
+        
 
         
-        Serial.print(stabilisationPitch);
-        Serial.print(",");
-        Serial.println(stabilisationRoll);
 
-        // float offsetAngle = 3;
+        motorFrontRight = throttle - roll - pitch - yaw;
+        motorRearRight = throttle - roll + pitch + yaw;
+        motorRearLeft = throttle + roll + pitch - yaw;
+        motorFrontLeft = throttle + roll - pitch + yaw;
 
-        // if (angles.x >= offsetAngle)
-        // {
-        //     stabilisationRoll = -2;
-        // } 
-        // else if (angles.x <= -1 * offsetAngle)
-        // {
-        //     stabilisationRoll = 2;
-        // }
-
-        // if (angles.y >= offsetAngle)
-        // {
-        //     stabilisationPitch = -2;
-        // } 
-        // else if (angles.y <= -1 * offsetAngle)
-        // {
-        //     stabilisationPitch = 2;
-        // }
-
-        motorFrontRight = throttle - roll - pitch - yaw - stabilisationRoll - stabilisationPitch;
-        motorRearRight = throttle - roll + pitch + yaw - stabilisationRoll + stabilisationPitch;
-        motorRearLeft = throttle + roll + pitch - yaw + stabilisationRoll + stabilisationPitch;
-        motorFrontLeft = throttle + roll - pitch + yaw + stabilisationRoll - stabilisationPitch;
+        motorFrontRight = min(MAX_MOTOR_VALUE, motorFrontRight);
+        motorRearRight = min(MAX_MOTOR_VALUE, motorRearRight);
+        motorRearLeft = min(MAX_MOTOR_VALUE, motorRearLeft);
+        motorFrontLeft = min(MAX_MOTOR_VALUE, motorFrontLeft);
 
         ESC1.write(motorFrontRight);
         ESC2.write(motorRearRight);

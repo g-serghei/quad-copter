@@ -110,18 +110,6 @@ namespace Imu
         dataOffset.gyro.y = gyroSum.y / times;
         dataOffset.gyro.z = gyroSum.z / times;
 
-        // Serial.println("Calibration done!");
-
-        // Serial.println("");
-
-        // Serial.println("Accel offet:");
-        // printAxis(dataOffset.accel);
-
-        // Serial.println("");
-
-        // Serial.println("Gyro offet:");
-        // printAxis(dataOffset.gyro);
-
         delay(1000);
     }
 
@@ -185,8 +173,11 @@ namespace Imu
 
         gyroAngles.x = gyroAngles.x + (data.gyro.x * dt);
         gyroAngles.y = gyroAngles.y + (data.gyro.y * dt);
+        gyroAngles.z = gyroAngles.z + (data.gyro.z * dt);
 
-        degAngles = {(float)(radAngles.x * RAD_TO_DEG), (float)(radAngles.y * RAD_TO_DEG), 0.0};
+        degAngles = {(float)(radAngles.x * RAD_TO_DEG), (float)(radAngles.y * RAD_TO_DEG), (float)(gyroAngles.z * RAD_TO_DEG)};
+
+        printAxis(degAngles);
 
         lastReadMicros = micros();
     }
